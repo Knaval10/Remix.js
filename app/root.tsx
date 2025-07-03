@@ -4,10 +4,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useMatches,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
 
 import "./tailwind.css";
+import Header from "./components/Layout/Header";
+import Footer from "./components/Layout/Footer";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -31,7 +34,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body cz-shortcut-listen="true">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -41,5 +44,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const matches = useMatches();
+  const isAdminRoute = matches.some(
+    (match) =>
+      match.id?.startsWith("routes/admin") ||
+      match.id?.startsWith("routes/login")
+  );
+  return (
+    <>
+      {!isAdminRoute && <Header />}
+      <Outlet />
+      {!isAdminRoute && <Footer />}
+    </>
+  );
 }
