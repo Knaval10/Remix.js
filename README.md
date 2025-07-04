@@ -113,84 +113,155 @@
 
 
                                           # Detailed process
-                                          ┌─────────────────────────────┐
-                                          │    User opens browser       │
-                                          └────────────┬────────────────┘
-                                                       │
-                                                       ▼
-                                          (1) Browser requests a page:
-                                              GET http://localhost:3000/
-                                              Accept: text/html
-                                                       │
-                                                       ▼
-                                          ┌─────────────────────────────────────────────────────┐
-                                          │               Remix Dev Server (SSR)                │
-                                          │ - Matches route (/)                                 │
-                                          │ - Executes loader() for /                           │
-                                          │ - Dynamically imports JSX route modules             │
-                                          │   (via Vite’s SSR module loader)                    │
-                                          │ - ReactDOMServer.renderToString() converts React   │
-                                          │   components to a pre-rendered HTML string          │
-                                          └─────────────────────────────┬───────────────────────┘
+                                         ┌──────────────────────────────┐
+                                         │     User opens the browser   │
+                                         └────────────┬─────────────────┘
+                                                      │
+                                                      ▼
+                                         (1) Browser sends request:
+                                             GET http://localhost:3000/
+                                             Accept: text/html
+                                                      │
+                                                      ▼
+                                         ┌──────────────────────────────────────────────────────────┐
+                                         │                Remix Dev Server (SSR Mode)               │
+                                         │ - Matches route (e.g., "/")                              │
+                                         │ - Dynamically imports matched route modules              │
+                                         │ - Executes loader() for each matched route               │
+                                         │ - Collects loader data                                   │
+                                         │ - Creates remixContext                                   │
+                                         │ - Builds JSX tree using <RemixServer />                  │
+                                         │ - Calls ReactDOMServer.renderToString()                  │
+                                         │ - Generates pre-rendered HTML string                     │
+                                         │ - Injects:                                               │
+                                         │     • window.__REMIX_DATA__ (loader data, manifest)      │
+                                         │     • <script type="module" src="/entry.client.js">      │
+                                         │     • <link href="/styles.css">                          │
+                                         └──────────────────────────────┬───────────────────────────┘
                                                                         │
-                                          (2) Returns full HTML response including:
-                                              - Pre-rendered HTML string
-                                              - <script src="/build/entry.client.js">
-                                              - <link href="/styles.css">
+                                         (2) Server returns full HTML response
                                                                         │
                                                                         ▼
-                                                             ┌─────────────────────┐
-                                                             │      Browser        │
-                                                             └────────┬────────────┘
-                                                                      │
-                                          (3) Parses HTML and requests assets from Vite:
-                                              ├─ GET http://localhost:5173/build/entry.client.js
-                                              └─ GET http://localhost:5173/styles.css
-                                                                      │
-                                                                      ▼
-                                                         ┌───────────────────────────┐
-                                                         │         Vite Dev          │
-                                                         │ - Transpiles JSX to JS    │
-                                                         │ - Serves JS and CSS       │
-                                                         │ - Handles HMR             │
-                                                         └─────────────┬─────────────┘
-                                                                       │
-                                          (4) JS loads in browser:
-                                              React and RemixBrowser initialize
-                                                                       │
-                                          (5) React hydrates the SSR DOM:
-                                              - Attaches event listeners
-                                              - Enables SPA navigation and interactivity
-                                                                       │
-                                                                       ▼
+                                         ┌─────────────────────────────────────────────────────────────┐
+                                         │                      Browser Receives HTML                  │
+                                         │                                                             │
+                                         │ (3a) Parses HTML and builds real DOM                        │
+                                         │     - DOM tree created from SSR HTML                        │
+                                         │     - Content is immediately painted                        │
+                                         │                                                             │
+                                         │ (3b) Requests JS & CSS assets                               │
+                                         │     - GET /entry.client.js                                  │
+                                         │     - GET /styles.css                                       │
+                                         └─────────────────────────────────────────────────────────────┘
+                                                                        │
+                                                                        ▼
+                                         ┌─────────────────────────────────────────────────────────────┐
+                                         │                    Vite Dev Server (Dev Mode)               │
+                                         │ - Serves JS chunks, transpiles JSX                          │
+                                         │ - Supports HMR                                              │
+                                         └──────────────────────────────┬──────────────────────────────┘
+                                                                        │
+                                         (4) JavaScript loads and runs:
+                                             - entry.client.js calls hydrateRoot()
+                                             - React initializes <RemixBrowser />
+                                                                        │
+                                                                        ▼
+                                         ┌─────────────────────────────────────────────────────────────┐
+                                         │                  Hydration Phase (React + Remix)            │
+                                         │                                                             │
+                                         │ (4a) React builds virtual DOM (vDOM)                        │
+                                         │ (4b) React compares vDOM to real DOM                        │
+                                         │                                                             │
+                                         │ (4c) If vDOM matches real DOM:                              │
+                                         │     - React attaches event listeners                        │
+                                         │     - App becomes interactive                               │
+                                         │                                                             │
+                                         │ (4d) ❌ If vDOM does NOT match real DOM:                    │
+                                         │     - React logs warning in console                         │
+                                         │     - May replace mismatched DOM nodes                      │
+                                         │     - Hydration partially fails or triggers re-render       │
+                                         │     - App might behave unexpectedly or lose state           │
+                                         └─────────────────────────────────────────────────────────────┘
 
-                                          ───────────── CLIENT-SIDE NAVIGATION ─────────────
+                                         ─────────────── CLIENT-SIDE NAVIGATION ───────────────
 
-                                          (6) User clicks <Link to="/profile" />
-                                                                       │
-                                          (7) Remix client intercepts navigation and:
-                                              ├─ Fetches JSON data from Remix server:
-                                              │    fetch http://localhost:3000/profile
-                                              │    Accept: application/json
-                                              └─ Dynamically imports `/profile` JSX module chunk:
-                                                   import("/build/routes/profile-XYZ.js") from Vite
-                                                                       │
-                                                                       ▼
-                                          ┌─────────────────────────────────────────────────────┐
-                                          │              Remix Dev Server (SPA mode)            │
-                                          │ - Matches route (/profile)                          │
-                                          │ - Executes loader() for /profile                    │
-                                          │ - Returns JSON loader data                          │
-                                          └───────────────┬─────────────────────────────────────┘
-                                                          │
-                                          (8) Remix JSON data returned to browser
-                                                          │
-                                          (9) Vite transpiles & serves JSX module chunk for `/profile` route
-                                                          │
-                                          (10) React receives JSX module + loader data
-                                               → React renders the `/profile` route component
-                                               → React reconciliation calculates minimal DOM updates
-                                               → DOM updates and UI changes smoothly without full reload
+                                         (5) User clicks <Link to="/profile" />
+                                                                        │
+                                         (6) Remix client intercepts navigation event:
+                                             - Prevents full page reload
+                                             - Matches route(s) for new URL (/profile)
+                                             - Determines loaders to re-run & revalidation rules
+                                                                        │
+                                                                        ▼
+                                         (7) Remix client requests route data & code:
+                                             - Sends fetch() for loader JSON data:
+                                               Accept: application/json
+                                             - Dynamically imports route module JS chunk:
+                                               import("/build/routes/profile-XYZ.js")
+                                                                        │
+                                                                        ▼
+                                         ┌─────────────────────────────────────────────────────────────┐
+                                         │                   Vite Dev Server (Dev Mode)                │
+                                         │ - Receives JSX module request                                │
+                                         │ - Transpiles JSX/TSX to JavaScript on-the-fly                │
+                                         │ - Serves transpiled JS module chunk                          │
+                                         └──────────────────────────────┬──────────────────────────────┘
+                                                                        │
+                                         (8) Remix Dev Server executes loader() for /profile route
+                                             and returns JSON loader data
+                                                                        │
+                                                                        ▼
+                                         (9) Browser receives:
+                                             - Loader JSON data
+                                             - Transpiled JS route module chunk
+                                                                        │
+                                                                        ▼
+                                         (10) Remix client updates React state:
+                                              - Injects loader data into component props
+                                              - React reconciles vDOM with real DOM
+                                              - Minimal DOM updates applied
+                                                                        ▼
+                                              ✅ New route rendered with SPA navigation without full page reload
+
+# Folder Structure and Routing
+
+- Folder based # Organized but not yet recommended # only considers the direct file
+  app/
+  ├── components/
+  │ ├── ui/
+  │ │ ├── Button.tsx
+  │ │ └── Modal.tsx
+  │ └── shared/
+  │ ├── Header.tsx
+  │ └── Footer.tsx
+  ├── routes/
+  │ ├── \_dashboard/
+  │ │ ├── route.tsx
+  │ │ ├── components/ # Dashboard-specific components
+  │ │ │ └── DashboardNav.tsx
+  │ │ └── index.tsx
+  │ └── \_blog/
+  │ ├── route.tsx
+  │ └── index.tsx
+  └── utils/
+  └── db.server.ts
+
+- Fully file and dot based # Recommended
+  app/routes/
+  ├── \_index.tsx #URL:/ #root or landing page
+  ├── admin.tsx # admin layout
+  ├── admin.\_index.tsx #URL:/admin # admin's dashboard
+  ├── admin.employee.tsx # URL:/admin/employee
+  ├── dashboard.tsx # URL: /dashboard
+  ├── dashboard.settings.tsx # URL: /dashboard/settings
+  ├── dashboard.profile.tsx # URL: /dashboard/profile
+  ├── blog.tsx # URL: /blog
+  ├── blog.posts.tsx # URL: /blog/posts
+  ├── blog.categories.tsx # URL: /blog/categories
+  ├── users.\_index.tsx # URL: /users (user list page)
+  └── users.$userId.tsx # URL: /users/123 (user details with slug)
+
+  Note: file name with (\_)prefix is not considered for path or url
 
 ## Development
 

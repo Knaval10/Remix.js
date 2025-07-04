@@ -1,7 +1,7 @@
 import React from "react";
 
 const Footer = () => {
-  return <div>Footer</div>;
+  return <div className="p-5 bg-white text-black">Footer</div>;
 };
 
-export default Footer;
+export default React.memo(Footer);

@@ -220,8 +220,7 @@ const Map = ({ alerts }: any) => {
       map.on("mousemove", "district-fill", (e: mapboxgl.MapLayerMouseEvent) => {
         e.preventDefault();
         map.getCanvas().style.cursor = "pointer";
-        console.log("e", e, e.features);
-        console.dir("dir", e.features);
+
         if (hoveredDistrictId) {
           map.setFeatureState(
             {
@@ -235,7 +234,7 @@ const Map = ({ alerts }: any) => {
 
         if (e.features && e.features.length > 0) {
           hoveredDistrictId = e.features[0].id as number; // or string, depending on your GeoJSON feature ID type
-          console.log("hovered", hoveredDistrictId);
+
           map.setFeatureState(
             {
               source: "nepal",
