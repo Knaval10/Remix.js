@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
+import mapboxgl, { MapLayerMouseEvent } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import AdministrativeBoundaryController, {
   AdministrativeLayer,
@@ -16,7 +16,7 @@ mapboxgl.accessToken = import.meta.env.VITE_APP_MAPBOX_ACCESS_TOKEN;
 const mapStyle = import.meta.env.VITE_APP_MAP_STYLE_NONE;
 const nepalUrl = import.meta.env.VITE_APP_MAP_SOURCE_NEPAL;
 
-const Map = ({ alerts }: any) => {
+const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
   const [width, setWidth] = useState<number | null>(null);
 
   const [selectedLayer, setSelectedLayer] = useState<LayerTitle[]>([]);
@@ -34,6 +34,7 @@ const Map = ({ alerts }: any) => {
   const mapContainerRef: any = useRef(null);
 
   let hoveredDistrictId: number | undefined = undefined;
+  let hoveredMarkerId: number | undefined = hoveredItem;
 
   useEffect(() => {
     const map = new mapboxgl.Map({
@@ -64,7 +65,7 @@ const Map = ({ alerts }: any) => {
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
 
     //Load style
-    map.on("style.load", () => {
+    map.on("load", () => {
       //Adding source for nepal
       map.addSource("nepal", {
         type: "vector",
@@ -78,11 +79,12 @@ const Map = ({ alerts }: any) => {
           type: "FeatureCollection",
           features: alertData.map((item: any) => ({
             type: "Feature",
+            id: item?.id,
             geometry: item.point,
             properties: { ...item },
           })),
         },
-        cluster: true,
+        cluster: false,
         clusterRadius: 40,
       });
 
@@ -208,65 +210,90 @@ const Map = ({ alerts }: any) => {
           visibility: "visible",
         },
         paint: {
-          "circle-color": "purple",
-          "circle-radius": 10,
-          "circle-stroke-width": 5,
-          "circle-stroke-color": "green",
-          "circle-stroke-opacity": 1,
+          "circle-color": [
+            "match",
+            ["get", "referenceType"],
+            "river",
+            "blue",
+            "fire",
+            "red",
+            "rain",
+            "purple",
+            "black",
+          ],
+          "circle-radius": 8,
+          "circle-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], true],
+            1, // fully visible if hovered
+            ["boolean", ["feature-state", "otherHover"], true],
+            0.2, // faded if another marker is hovered
+            1, // default opacity
+          ],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "purple",
+          "circle-stroke-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], true],
+            1,
+            ["boolean", ["feature-state", "otherHover"], true],
+            0,
+            1,
+          ],
         },
       });
 
       //Mouse event to change the district fill on hover
-      map.on("mousemove", "district-fill", (e: mapboxgl.MapLayerMouseEvent) => {
-        e.preventDefault();
-        map.getCanvas().style.cursor = "pointer";
+      // map.on("mousemove", "district-fill", (e: mapboxgl.MapLayerMouseEvent) => {
+      //   e.preventDefault();
+      //   map.getCanvas().style.cursor = "pointer";
 
-        if (hoveredDistrictId) {
-          map.setFeatureState(
-            {
-              source: "nepal",
-              sourceLayer: "districtgeo",
-              id: hoveredDistrictId,
-            },
-            { hoverDistrict: false }
-          );
-        }
+      //   if (hoveredDistrictId) {
+      //     map.setFeatureState(
+      //       {
+      //         source: "nepal",
+      //         sourceLayer: "districtgeo",
+      //         id: hoveredDistrictId,
+      //       },
+      //       { hoverDistrict: false }
+      //     );
+      //   }
 
-        if (e.features && e.features.length > 0) {
-          hoveredDistrictId = e.features[0].id as number; // or string, depending on your GeoJSON feature ID type
+      //   if (e.features && e.features.length > 0) {
+      //     hoveredDistrictId = e.features[0].id as number; // or string, depending on your GeoJSON feature ID type
 
-          map.setFeatureState(
-            {
-              source: "nepal",
-              sourceLayer: "districtgeo",
-              id: hoveredDistrictId,
-            },
-            { hoverDistrict: true }
-          );
-        }
-      });
+      //     map.setFeatureState(
+      //       {
+      //         source: "nepal",
+      //         sourceLayer: "districtgeo",
+      //         id: hoveredDistrictId,
+      //       },
+      //       { hoverDistrict: true }
+      //     );
+      //   }
+      // });
 
-      //Revert the district fill on mouse leave
-      map.on(
-        "mouseleave",
-        "district-fill",
-        (e: mapboxgl.MapLayerMouseEvent) => {
-          map.getCanvas().style.cursor = "";
+      // //Revert the district fill on mouse leave
+      // map.on(
+      //   "mouseleave",
+      //   "district-fill",
+      //   (e: mapboxgl.MapLayerMouseEvent) => {
+      //     map.getCanvas().style.cursor = "";
 
-          if (hoveredDistrictId) {
-            map.setFeatureState(
-              {
-                source: "nepal",
-                sourceLayer: "districtgeo",
-                id: hoveredDistrictId,
-              },
-              { hoverDistrict: false }
-            );
-          }
+      //     if (hoveredDistrictId) {
+      //       map.setFeatureState(
+      //         {
+      //           source: "nepal",
+      //           sourceLayer: "districtgeo",
+      //           id: hoveredDistrictId,
+      //         },
+      //         { hoverDistrict: false }
+      //       );
+      //     }
 
-          hoveredDistrictId = undefined;
-        }
-      );
+      //     hoveredDistrictId = undefined;
+      //   }
+      // );
 
       //Change center and zoom on cluster click
       map.on("click", "alert-cluster", (e) => {
@@ -278,6 +305,104 @@ const Map = ({ alerts }: any) => {
       map.on("mouseenter", "alert-cluster", () => {
         map.getCanvas().style.cursor = "pointer";
       });
+      map.on("mousemove", "alert-marker", (e: MapLayerMouseEvent) => {
+        e.preventDefault();
+        map.getCanvas().style.cursor = "pointer";
+        const feature = e.features?.[0];
+        const id = feature?.id;
+        setHoveredItem(id);
+        if (id == null) return;
+
+        // Reset previous hover state if hovering a new feature
+        if (hoveredMarkerId) {
+          map.setFeatureState(
+            { source: "alert-data", id: hoveredMarkerId },
+            { hover: false }
+          );
+        }
+
+        hoveredMarkerId = undefined;
+        if (e.features && e.features.length > 0) {
+          hoveredMarkerId = e.features[0].id as number; // or string, depending on your GeoJSON feature ID type
+          map.setFeatureState(
+            {
+              source: "alert-data",
+              id: hoveredMarkerId,
+            },
+            { hover: true }
+          );
+        }
+
+        // Dim all other markers
+        map.querySourceFeatures("alert-data").forEach((f) => {
+          if (f.id != null && f.id !== id) {
+            map.setFeatureState(
+              { source: "alert-data", id: f.id },
+              { otherHover: true }
+            );
+          }
+        });
+      });
+
+      map.on("mouseleave", "alert-marker", () => {
+        // Reset hover state for previously hovered marker
+        // if (hoveredMarkerId) {
+        //   map.setFeatureState(
+        //     { source: "alert-data", id: hoveredMarkerId },
+        //     { hover: false }
+        //   );
+        //   hoveredMarkerId = undefined;
+        // }
+        map.getCanvas().style.cursor = "";
+
+        // Reset all otherHover states
+        map.querySourceFeatures("alert-data").forEach((f) => {
+          if (f.id != null) {
+            map.setFeatureState(
+              { source: "alert-data", id: f.id },
+              { otherHover: false }
+            );
+          }
+        });
+      });
+    });
+    map.on("load", () => {
+      const applyInitialHoverEffect = () => {
+        const features = map.querySourceFeatures("alert-data");
+
+        if (!features.length) {
+          return;
+        }
+
+        for (const feature of features) {
+          if (feature.id == null) continue;
+
+          const isHovered = feature.id === hoveredMarkerId;
+
+          map.setFeatureState(
+            { source: "alert-data", id: feature.id },
+            isHovered ? { hover: true } : { otherHover: true }
+          );
+        }
+
+        // center to hovered marker
+        // const hoveredFeature = features.find(f => f.id === hoveredMarkerId);
+        // if (hoveredFeature && hoveredFeature.geometry?.type === "Point") {
+        //   const coords = hoveredFeature.geometry.coordinates;
+        //   map.flyTo({ center: coords, zoom: 10 });
+        // }
+      };
+
+      if (map.isSourceLoaded("alert-data")) {
+        applyInitialHoverEffect();
+      } else {
+        map.on("sourcedata", function handleSourceLoad(e) {
+          if (e.sourceId === "alert-data" && e.isSourceLoaded) {
+            applyInitialHoverEffect();
+            map.off("sourcedata", handleSourceLoad);
+          }
+        });
+      }
     });
 
     //Responsiveness
@@ -321,6 +446,45 @@ const Map = ({ alerts }: any) => {
       }
     });
   }, [selectedLayer]);
+
+  useEffect(() => {
+    if (!mapRef?.current || !mapRef?.current.isStyleLoaded()) return;
+    if (hoveredMarkerId == null) return;
+
+    const features = mapRef?.current.querySourceFeatures("alert-data");
+    if (!features.length) return;
+
+    features.forEach((feature: any) => {
+      if (feature.id == null) return;
+
+      const isHovered = feature.id === hoveredMarkerId;
+
+      mapRef?.current.setFeatureState(
+        { source: "alert-data", id: feature.id },
+        isHovered
+          ? { hover: true, otherHover: false }
+          : { hover: false, otherHover: true }
+      );
+    });
+
+    // center to hovered marker
+    // const hovered = features.find((f) => f.id === hoveredMarkerId);
+    // if (hovered?.geometry.type === "Point") {
+    //   mapRef?.current.flyTo({ center: hovered.geometry.coordinates, zoom: 10 });
+    // }
+
+    return () => {
+      // Clean up: reset all feature states
+      features.forEach((feature: any) => {
+        if (feature.id != null) {
+          mapRef?.current.setFeatureState(
+            { source: "alert-data", id: feature.id },
+            { hover: false, otherHover: false }
+          );
+        }
+      });
+    };
+  }, [hoveredMarkerId, mapRef?.current]);
 
   return (
     <div className="h-screen w-full relative">

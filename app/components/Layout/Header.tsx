@@ -1,6 +1,6 @@
 import { Link } from "@remix-run/react";
 import React from "react";
-const navData = [
+export const navData = [
   {
     id: 1,
     title: "User",

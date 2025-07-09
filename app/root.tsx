@@ -13,6 +13,7 @@ import type { LinksFunction } from "@remix-run/node";
 import "./tailwind.css";
 import Header from "./components/Layout/Header";
 import Footer from "./components/Layout/Footer";
+import WebSidebar from "./components/Layout/WebSidebar";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -54,9 +55,14 @@ export default function App() {
   );
   return (
     <>
-      {!isAdminRoute && <Header />}
-      <Outlet />
-      {!isAdminRoute && <Footer />}
+      {/* {!isAdminRoute && <Header />} */}
+      <div className="flex justify-between">
+        <section className="w-[calc(100vw-97.14px)]">
+          <Outlet />
+        </section>
+        {!isAdminRoute && <WebSidebar />}
+      </div>
+      {/* {!isAdminRoute && <Footer />} */}
     </>
   );
 }
