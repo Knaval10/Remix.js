@@ -1,6 +1,6 @@
 import { formatNepalDateForQueryNepalTZ } from "~/lib/utils/dateFunction";
 
-const baseURL = import.meta.env.VITE_APP_API_SERVER_URL;
+export const baseURL = import.meta.env.VITE_APP_API_SERVER_URL;
 const today = new Date();
 today.setHours(23, 59, 59, 999);
 const sevenDaysAgo = new Date();

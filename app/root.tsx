@@ -14,6 +14,7 @@ import "./tailwind.css";
 import Header from "./components/Layout/Header";
 import Footer from "./components/Layout/Footer";
 import WebSidebar from "./components/Layout/WebSidebar";
+import { FederalProvider } from "./lib/context/FederalContext";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -58,7 +59,9 @@ export default function App() {
       {/* {!isAdminRoute && <Header />} */}
       <div className="flex justify-between">
         <section className="w-[calc(100vw-97.14px)]">
-          <Outlet />
+          <FederalProvider>
+            <Outlet />
+          </FederalProvider>
         </section>
         {!isAdminRoute && <WebSidebar />}
       </div>

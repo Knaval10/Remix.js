@@ -5,6 +5,8 @@ import AdministrativeBoundaryController, {
   AdministrativeLayer,
   administrativeLayers,
 } from "./AdministrativeBoundaryController";
+import TopFilter from "./TopFilter";
+import { useFederalData } from "~/hooks/useFederalData";
 export type LayerTitle = "province" | "district" | "municipality" | "ward";
 
 export interface MapProps {
@@ -12,26 +14,40 @@ export interface MapProps {
   setCheckedLayer: React.Dispatch<React.SetStateAction<LayerTitle[]>>;
 }
 
-mapboxgl.accessToken = import.meta.env.VITE_APP_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 const mapStyle = import.meta.env.VITE_APP_MAP_STYLE_NONE;
 const nepalUrl = import.meta.env.VITE_APP_MAP_SOURCE_NEPAL;
+const Map = ({
+  alerts,
+  hoveredItem,
+  setHoveredItem,
+  showToolbar,
+  setShowToolbar,
+}: any) => {
+  const mapRef: any = useRef(null);
+  const mapContainerRef: any = useRef(null);
 
-const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
   const [width, setWidth] = useState<number | null>(null);
-
   const [selectedLayer, setSelectedLayer] = useState<LayerTitle[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState(null);
+
   useEffect(() => {
     setWidth(window.innerWidth);
 
     const handleWindowResize = () => setWidth(window.innerWidth);
     window.addEventListener("resize", handleWindowResize);
-
+    mapRef?.current?.resize();
+    mapRef?.current?.fitBounds(
+      [
+        [78.4745772586162, 25.882484351930984],
+        [90.01928188702573, 30.658606158679973],
+      ],
+      { duration: 0 }
+    );
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [width]);
+  }, [width, showToolbar]);
 
   const alertData = alerts && alerts?.results?.length > 0 && alerts?.results;
-  const mapRef: any = useRef(null);
-  const mapContainerRef: any = useRef(null);
 
   let hoveredDistrictId: number | undefined = undefined;
   let hoveredMarkerId: number | undefined = hoveredItem;
@@ -40,7 +56,7 @@ const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: mapStyle,
-      zoom: 7,
+      zoom: 6,
       minZoom: 2,
       maxZoom: 22,
       center: [84.2676, 28.5465],
@@ -77,12 +93,14 @@ const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: alertData.map((item: any) => ({
-            type: "Feature",
-            id: item?.id,
-            geometry: item.point,
-            properties: { ...item },
-          })),
+          features:
+            alertData?.length > 0 &&
+            alertData.map((item: any) => ({
+              type: "Feature",
+              id: item?.id,
+              geometry: item.point,
+              properties: { ...item },
+            })),
         },
         cluster: false,
         clusterRadius: 40,
@@ -365,8 +383,7 @@ const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
           }
         });
       });
-    });
-    map.on("load", () => {
+
       const applyInitialHoverEffect = () => {
         const features = map.querySourceFeatures("alert-data");
 
@@ -448,6 +465,21 @@ const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
   }, [selectedLayer]);
 
   useEffect(() => {
+    if (mapRef?.current) {
+      setTimeout(() => {
+        mapRef?.current?.resize();
+        mapRef?.current?.fitBounds(
+          [
+            [78.4745772586162, 25.882484351930984],
+            [90.01928188702573, 30.658606158679973],
+          ],
+          { duration: 0 }
+        );
+      }, 300);
+    }
+  }, [showToolbar]);
+
+  useEffect(() => {
     if (!mapRef?.current || !mapRef?.current.isStyleLoaded()) return;
     if (hoveredMarkerId == null) return;
 
@@ -486,15 +518,36 @@ const Map = ({ alerts, hoveredItem, setHoveredItem }: any) => {
     };
   }, [hoveredMarkerId, mapRef?.current]);
 
+  const {
+    province,
+    district,
+    municipality,
+    fetchProvince,
+    fetchDistrict,
+    fetchMunicipality,
+  }: any = useFederalData();
+  useEffect(() => {
+    fetchProvince();
+    fetchDistrict();
+    fetchMunicipality();
+  }, []);
+
   return (
     <div className="h-screen w-full relative">
-      <div className="absolute right-10 top-10 z-10">
+      <div className="flex gap-4 absolute right-10 top-10 z-10">
         <AdministrativeBoundaryController
           checkedLayer={selectedLayer}
           setCheckedLayer={setSelectedLayer}
         />
+        <TopFilter
+          selectedFilter={selectedFilter}
+          setSelectedFilter={setSelectedFilter}
+          province={province}
+          district={district}
+          municipality={municipality}
+        />
       </div>
-      <div ref={mapContainerRef} className="h-full w-full "></div>
+      <div ref={mapContainerRef} className="h-full w-full bg-[#f4f4f2]"></div>
     </div>
   );
 };

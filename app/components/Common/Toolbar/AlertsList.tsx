@@ -3,12 +3,13 @@ import ForestFire from "../../../assets/icons/forest-fire.svg";
 import Flood from "../../../assets/icons/flood.svg";
 import HeavyRain from "../../../assets/icons/strong-rain.svg";
 import BarGraph from "../../../assets/icons/bar-graph.svg";
+import ChevronDown from "~/assets/dynamic/ChevronDown";
 
 const AlertsList = ({ alertList, hoveredItem, setHoveredItem }: any) => {
   const alertData = (alertList && alertList?.results) || [];
 
   return (
-    <div className="flex flex-col max-h-[calc(100vh-260px)] overflow-auto scrollbar my-2">
+    <div className="flex flex-col max-h-[calc(100vh-240px)] overflow-auto scrollbar my-2 ">
       {alertData?.length > 0 &&
         alertData.map((item: any, idx: number) => (
           <div
