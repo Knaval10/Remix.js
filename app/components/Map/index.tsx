@@ -425,6 +425,7 @@ const Map = ({ alerts, hoveredItem, setHoveredItem, showToolbar }: any) => {
 
     map.on("click", "alert-marker", (e: MapLayerMouseEvent) => {
       e.preventDefault();
+      if (!e.features) return;
       const properties = e.features[0].properties;
       const popupNode = document.createElement("div");
       createRoot(popupNode).render(<Popup properties={properties} />);
@@ -503,7 +504,7 @@ const Map = ({ alerts, hoveredItem, setHoveredItem, showToolbar }: any) => {
 
       const isHovered = feature.id === hoveredMarkerId;
 
-      mapRef?.current.setFeatureState(
+      mapRef?.current?.setFeatureState(
         { source: "alert-data", id: feature.id },
         isHovered
           ? { hover: true, otherHover: false }
@@ -521,7 +522,7 @@ const Map = ({ alerts, hoveredItem, setHoveredItem, showToolbar }: any) => {
       // Clean up: reset all feature states
       features.forEach((feature: any) => {
         if (feature.id != null) {
-          mapRef?.current.setFeatureState(
+          mapRef?.current?.setFeatureState(
             { source: "alert-data", id: feature.id },
             { hover: false, otherHover: false }
           );
