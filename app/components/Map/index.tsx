@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl, { MapLayerMouseEvent } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import AdministrativeBoundaryController, {
-  AdministrativeLayer,
   administrativeLayers,
 } from "./AdministrativeBoundaryController";
 import TopFilter from "./TopFilter";
 import { useFederalData } from "~/hooks/useFederalData";
+import { useFederal } from "~/lib/context/FederalContext";
+import Popup from "./Popup";
+import { createRoot } from "react-dom/client";
 export type LayerTitle = "province" | "district" | "municipality" | "ward";
 
 export interface MapProps {
@@ -14,22 +16,20 @@ export interface MapProps {
   setCheckedLayer: React.Dispatch<React.SetStateAction<LayerTitle[]>>;
 }
 
+export interface ItemProps {}
+
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 const mapStyle = import.meta.env.VITE_APP_MAP_STYLE_NONE;
 const nepalUrl = import.meta.env.VITE_APP_MAP_SOURCE_NEPAL;
-const Map = ({
-  alerts,
-  hoveredItem,
-  setHoveredItem,
-  showToolbar,
-  setShowToolbar,
-}: any) => {
-  const mapRef: any = useRef(null);
-  const mapContainerRef: any = useRef(null);
+const Map = ({ alerts, hoveredItem, setHoveredItem, showToolbar }: any) => {
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [width, setWidth] = useState<number | null>(null);
   const [selectedLayer, setSelectedLayer] = useState<LayerTitle[]>([]);
   const [selectedFilter, setSelectedFilter] = useState(null);
+  const [submittedProvince, setSubmittedProvince] = useState({});
+  const [submittedDistrict, setSubmittedDistrict] = useState({});
 
   useEffect(() => {
     setWidth(window.innerWidth);
@@ -49,10 +49,11 @@ const Map = ({
 
   const alertData = alerts && alerts?.results?.length > 0 && alerts?.results;
 
-  let hoveredDistrictId: number | undefined = undefined;
+  // let hoveredDistrictId: number | undefined = undefined;
   let hoveredMarkerId: number | undefined = hoveredItem;
 
   useEffect(() => {
+    if (!mapContainerRef.current) return;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: mapStyle,
@@ -64,8 +65,8 @@ const Map = ({
         // window.screen.width < 768
         //   ?
         [
-          [79.161987, 19.47695],
-          [89.626465, 36.22655],
+          [79.161987, 19.47695], //South-west
+          [89.626465, 36.22655], //North-east
         ],
       // : [
       //     [78.4745772586162, 25.882484351930984],
@@ -422,6 +423,17 @@ const Map = ({
       }
     });
 
+    map.on("click", "alert-marker", (e: MapLayerMouseEvent) => {
+      e.preventDefault();
+      const properties = e.features[0].properties;
+      const popupNode = document.createElement("div");
+      createRoot(popupNode).render(<Popup properties={properties} />);
+      new mapboxgl.Popup({ closeButton: false })
+        .setLngLat(e.lngLat)
+        .setDOMContent(popupNode)
+        .addTo(map);
+    });
+
     //Responsiveness
     //At every screen size, fits the map to the maximum south-west and north-east coordinates of Nepal
     map.fitBounds(
@@ -532,6 +544,111 @@ const Map = ({
     fetchMunicipality();
   }, []);
 
+  const {
+    selectedProvince,
+    setSelectedProvince,
+    selectedDistrict,
+    setSelectedDistrict,
+    selectedMunicipality,
+    setSelectedMunicipality,
+  }: any = useFederal();
+
+  const handleFederalSubmit = () => {
+    if (selectedProvince) {
+      const provinceObj =
+        province.data.results?.length > 0 &&
+        province.data.results.find(
+          (item: any) => String(item.id) === selectedProvince
+        );
+      setSubmittedProvince(provinceObj);
+      if (selectedDistrict) {
+        const districtObj =
+          district.data.results?.length > 0 &&
+          district.data.results.find(
+            (item: any) => String(item.id) === selectedDistrict
+          );
+        setSubmittedDistrict(districtObj);
+      }
+    }
+  };
+  console.log("selected0", submittedDistrict);
+
+  useEffect(() => {
+    if (
+      submittedProvince &&
+      mapRef.current
+      // mapRef.current.getLayer("province-line")
+    ) {
+      const map = mapRef.current;
+      const { bbox, code }: any = submittedProvince; // use the correct property name like `id`, `name`, `code`, etc.
+
+      // Filter layer to show only selected province
+      // map.setFilter("province-line", [
+      //   "==",
+      //   ["get", "code"], // ← Change "code" to the property in your vector source
+      //   code,
+      // ]);
+
+      // Zoom to the province
+      if (bbox) {
+        map.fitBounds(
+          [
+            [bbox[0], bbox[1]],
+            [bbox[2], bbox[3]],
+          ],
+          {
+            padding: 20,
+            duration: 1000,
+          }
+        );
+      }
+    }
+    if (
+      submittedProvince &&
+      submittedDistrict &&
+      mapRef.current
+      // mapRef.current.getLayer("province-line")
+    ) {
+      const map = mapRef.current;
+      const { bbox, code }: any = submittedDistrict; // use the correct property name like `id`, `name`, `code`, etc.
+
+      // Filter layer to show only selected province
+      // map.setFilter("province-line", [
+      //   "==",
+      //   ["get", "code"], // ← Change "code" to the property in your vector source
+      //   code,
+      // ]);
+
+      // Zoom to the province
+      if (bbox) {
+        map.fitBounds(
+          [
+            [bbox[0], bbox[1]],
+            [bbox[2], bbox[3]],
+          ],
+          {
+            padding: 20,
+            duration: 1000,
+          }
+        );
+      }
+    }
+  }, [submittedProvince, submittedDistrict]);
+
+  const handleFilterReset = () => {
+    setSelectedDistrict("");
+    setSelectedProvince("");
+    if (mapRef.current) {
+      const map = mapRef.current;
+      map.setCenter([84.2676, 28.5465]);
+      // map.setZoom(map.getZoom() - 3);
+      map.fitBounds([
+        [79.161987, 19.47695],
+        [89.626465, 36.22655],
+      ]);
+    }
+  };
+
   return (
     <div className="h-screen w-full relative">
       <div className="flex gap-4 absolute right-10 top-10 z-10">
@@ -545,6 +662,8 @@ const Map = ({
           province={province}
           district={district}
           municipality={municipality}
+          handleFederalSubmit={handleFederalSubmit}
+          handleFilterReset={handleFilterReset}
         />
       </div>
       <div ref={mapContainerRef} className="h-full w-full bg-[#f4f4f2]"></div>

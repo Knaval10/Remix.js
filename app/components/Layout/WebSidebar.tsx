@@ -51,7 +51,7 @@ const webSidebarData = [
 const WebSidebar = () => {
   const location = useLocation();
   return (
-    <nav className="flex flex-col justify-between bg-white h-screen shadow-2xl fixed right-0">
+    <nav className="flex flex-col justify-between bg-white h-screen shadow-2xl fixed right-0 overflow-auto scrollbar">
       <ul className="flex flex-col">
         {webSidebarData.map((item) => (
           <li
@@ -60,7 +60,7 @@ const WebSidebar = () => {
           >
             <Link
               to={item.link}
-              className={`px-1 py-5 flex flex-col items-center gap-1 font-semibold text-center ${
+              className={`px-1 py-2 flex flex-col items-center gap-1 font-semibold text-center ${
                 item.link === location.pathname ? "bg-red-400 text-white" : ""
               }`}
             >

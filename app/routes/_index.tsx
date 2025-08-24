@@ -1,8 +1,7 @@
 // app/routes/_index.tsx
 import { json, type MetaFunction } from "@remix-run/node";
-import { Await, defer, useLoaderData } from "@remix-run/react";
-import React, { Suspense, useEffect } from "react";
-import { useMemo, useState } from "react";
+import { useLoaderData } from "@remix-run/react";
+import { ReactNode, useState } from "react";
 import Toolbar from "~/components/Common/Toolbar";
 import AlertsList from "~/components/Common/Toolbar/AlertsList";
 import DashboardTab from "~/components/Dashboard/DashboardTab";
@@ -25,6 +24,20 @@ export const loader = async () => {
   return json(alertsData);
 };
 
+interface DashboardItemType {
+  id: number;
+  count?: number;
+  title: string;
+}
+export interface HoveredItemProps {
+  hoveredItem: string;
+  setHoveredItem: React.Dispatch<React.SetStateAction<string>>;
+}
+export interface ToolbarProps {
+  showToolbar: boolean;
+  setShowToolabar: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
 // Page component
 export default function Index() {
   const alerts = useLoaderData<typeof loader>(); // consume SSR data
@@ -45,11 +58,13 @@ export default function Index() {
     },
   ];
 
-  const [selectedItem, setSelectedItem] = useState<any>(dashboardTabItems[0]);
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<DashboardItemType>(
+    dashboardTabItems[0]
+  );
+  const [hoveredItem, setHoveredItem] = useState<HoveredItemProps | null>(null);
+  const [showToolbar, setShowToolbar] = useState<ToolbarProps | boolean>(false);
 
-  const TabMap: any = {
+  const TabMap: Record<number, ReactNode> = {
     1: (
       <AlertsList
         alertList={alerts}
@@ -60,6 +75,8 @@ export default function Index() {
     2: <Events />,
     3: <Visualization data={alerts} />,
   };
+
+  console.log("alerts", alerts);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">

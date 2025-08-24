@@ -23,6 +23,8 @@ const TopFilter = ({
   district,
   municipality,
   ward,
+  handleFederalSubmit,
+  handleFilterReset,
 }: any) => {
   const FilterMap: any = {
     1: (
@@ -33,6 +35,7 @@ const TopFilter = ({
         district={district}
         municipality={municipality}
         ward={ward}
+        handleFederalSubmit={handleFederalSubmit}
       />
     ),
     2: <HazardFilter />,
@@ -40,8 +43,17 @@ const TopFilter = ({
   };
   return (
     <main className="flex flex-col gap-2 bg-white px-3 py-2 rounded-lg w-40 h-fit shadow-xl ">
-      <section className="flex justify-between">
+      <section className="flex justify-between items-center">
         <h2 className="text-blue-500 font-semibold text-sm">Filters</h2>
+        <p
+          onClick={() => {
+            handleFilterReset();
+            setSelectedFilter(false);
+          }}
+          className="text-black text-xs font-semibold"
+        >
+          Reset
+        </p>
       </section>
       <section className="flex gap-5s border-b border-gray-500 text-black cursor-pointer">
         {FilterTabItems?.map((item) => (

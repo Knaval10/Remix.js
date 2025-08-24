@@ -6,7 +6,6 @@ html,
 body {
   @apply bg-white dark:bg-gray-950;
 
-
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
   }
@@ -27,4 +26,8 @@ body {
 
 .scrollbar::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+.mapboxgl-popup-content {
+  padding: 0 !important;
 }

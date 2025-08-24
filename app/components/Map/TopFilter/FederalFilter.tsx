@@ -10,6 +10,7 @@ const FederalFilter = ({
   district,
   municipality,
   ward,
+  handleFederalSubmit,
 }: any) => {
   const {
     selectedProvince,
@@ -88,7 +89,10 @@ const FederalFilter = ({
         disabled={!selectedMunicipality}
         placeholder="Select Ward"
       /> */}
-      <button className="text-white text-sm font-semibold bg-red-400 rounded-sm hover:font-bold h-10 w-20 mt-2">
+      <button
+        onClick={handleFederalSubmit}
+        className="text-white text-sm font-semibold bg-red-400 rounded-sm hover:font-bold h-10 w-20 mt-2"
+      >
         Submit
       </button>
     </section>
